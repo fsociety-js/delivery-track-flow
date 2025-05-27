@@ -4,6 +4,7 @@ import { Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapProps {
   deliveryLocation?: { lat: number; lng: number };
@@ -12,13 +13,13 @@ interface MapProps {
 
 const Map: React.FC<MapProps> = ({ deliveryLocation, deliveryPartnerName }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const [mapboxToken, setMapboxToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(true);
+  const [mapboxToken, setMapboxToken] = useState('pk.eyJ1IjoiYXl1c2gyODg4IiwiYSI6ImNtYjZ0MTJkbjAyeXYybHNlenMxbXBjYjUifQ.9QvBaY9lvM6IAuq_l-VAsA');
+  const [showTokenInput, setShowTokenInput] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if token is already stored
-    const storedToken = localStorage.getItem('mapbox_token');
+    // Check if token is already stored or use the provided one
+    const storedToken = localStorage.getItem('mapbox_token') || mapboxToken;
     if (storedToken) {
       setMapboxToken(storedToken);
       setShowTokenInput(false);
@@ -74,6 +75,11 @@ const Map: React.FC<MapProps> = ({ deliveryLocation, deliveryPartnerName }) => {
 
       // Store map instance for updates
       (window as any).mapInstance = map;
+
+      toast({
+        title: 'Map Loaded',
+        description: 'Map has been successfully initialized'
+      });
 
     } catch (error) {
       console.error('Error initializing map:', error);
