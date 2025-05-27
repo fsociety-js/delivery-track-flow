@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Package, Clock, CheckCircle, Truck, User, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import CreateOrderForm from '@/components/CreateOrderForm';
 
 interface Order {
   id: string;
@@ -25,6 +25,14 @@ interface DeliveryPartner {
   phone: string;
   isAvailable: boolean;
   currentLocation?: { lat: number; lng: number };
+}
+
+interface CreateOrderFormData {
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  items: string;
+  totalAmount: number;
 }
 
 const VendorDashboard = () => {
@@ -107,6 +115,26 @@ const VendorDashboard = () => {
     setOrders(sampleOrders);
     setDeliveryPartners(samplePartners);
   }, []);
+
+  const createOrder = (orderData: CreateOrderFormData) => {
+    const newOrder: Order = {
+      id: `ORD${String(orders.length + 1).padStart(3, '0')}`,
+      customerName: orderData.customerName,
+      customerPhone: orderData.customerPhone,
+      items: orderData.items.split(',').map(item => item.trim()),
+      totalAmount: orderData.totalAmount,
+      status: 'pending',
+      address: orderData.deliveryAddress,
+      createdAt: new Date()
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+    
+    toast({
+      title: 'Order Created',
+      description: `Order ${newOrder.id} has been created successfully`
+    });
+  };
 
   const assignDeliveryPartner = (orderId: string, partnerName: string) => {
     setOrders(prev => prev.map(order => 
@@ -225,8 +253,13 @@ const VendorDashboard = () => {
         {/* Orders List */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Manage and assign delivery partners to orders</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Orders</CardTitle>
+                <CardDescription>Manage and assign delivery partners to orders</CardDescription>
+              </div>
+              <CreateOrderForm onCreateOrder={createOrder} />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
