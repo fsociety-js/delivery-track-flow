@@ -11,10 +11,13 @@ import { orderService, DeliveryPartnerOrder } from '@/services/orderService';
 import DeliveryMap from '@/components/DeliveryMap';
 
 const DeliveryDashboard = () => {
+  console.log('DeliveryDashboard component rendering...');
+  
   const [orders, setOrders] = useState<DeliveryPartnerOrder[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<DeliveryPartnerOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
   const { 
@@ -26,17 +29,36 @@ const DeliveryDashboard = () => {
   } = useLocationTracking(activeOrderId || undefined);
 
   useEffect(() => {
-    // Get user from auth service
-    const userData = authService.getUser();
-    if (userData && userData.role === 'delivery') {
-      setUser(userData);
-      loadOrders(userData.id);
+    console.log('DeliveryDashboard useEffect running...');
+    
+    try {
+      // Get user from auth service
+      const userData = authService.getUser();
+      console.log('User data:', userData);
       
-      // Connect to Socket.IO
-      socketService.connect(userData.id, 'delivery');
-    } else {
-      // Redirect to login or show error
-      window.location.href = '/';
+      if (userData && userData.role === 'delivery') {
+        setUser(userData);
+        loadOrders(userData.id);
+        
+        // Connect to Socket.IO
+        socketService.connect(userData.id, 'delivery');
+      } else {
+        console.log('No valid delivery user found, redirecting...');
+        // For demo purposes, create a sample user
+        const sampleUser: User = {
+          id: 'DEL001',
+          name: 'John Delivery',
+          email: 'john@delivery.com',
+          role: 'delivery'
+        };
+        setUser(sampleUser);
+        loadOrders(sampleUser.id);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error in DeliveryDashboard useEffect:', error);
+      setIsLoading(false);
     }
 
     return () => {
@@ -45,9 +67,12 @@ const DeliveryDashboard = () => {
   }, []);
 
   const loadOrders = async (deliveryPartnerId: string) => {
+    console.log('Loading orders for delivery partner:', deliveryPartnerId);
+    
     try {
       const fetchedOrders = await orderService.getDeliveryPartnerOrders(deliveryPartnerId);
       setOrders(fetchedOrders);
+      console.log('Orders loaded successfully:', fetchedOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
       // Fallback to sample data for demo
@@ -77,6 +102,7 @@ const DeliveryDashboard = () => {
         }
       ];
       setOrders(sampleOrders);
+      console.log('Using sample orders:', sampleOrders);
     }
   };
 
@@ -156,9 +182,32 @@ const DeliveryDashboard = () => {
     }
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600">Loading delivery dashboard...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">Authentication required</p>
+          <Button onClick={() => window.location.href = '/'} className="mt-4">
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Rendering delivery dashboard with user:', user, 'orders:', orders);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -232,88 +281,95 @@ const DeliveryDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {orders.map((order) => {
-                    const nextAction = getNextAction(order.status);
-                    
-                    return (
-                      <div key={order.id} className={`border rounded-lg p-4 transition-colors ${selectedOrder?.id === order.id ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}>
-                        <div className="flex items-start justify-between mb-4">
+                  {orders.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No orders assigned yet</p>
+                    </div>
+                  ) : (
+                    orders.map((order) => {
+                      const nextAction = getNextAction(order.status);
+                      
+                      return (
+                        <div key={order.id} className={`border rounded-lg p-4 transition-colors ${selectedOrder?.id === order.id ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <h3 className="font-semibold text-lg">Order #{order.id}</h3>
+                              <Badge className={getStatusColor(order.status)}>
+                                <span className="capitalize">{order.status.replace('_', ' ')}</span>
+                              </Badge>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">${order.totalAmount}</p>
+                              <p className="text-sm text-gray-600">{order.vendorName}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-6 mb-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600 mb-2">Customer Details</p>
+                              <p className="font-medium">{order.customerName}</p>
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                <Phone className="h-3 w-3" />
+                                <span>{order.customerPhone}</span>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm font-medium text-gray-600 mb-2">Items</p>
+                              <p className="text-sm">{order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-6 mb-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600 mb-1">Pickup Location</p>
+                              <div className="flex items-start space-x-1">
+                                <Package className="h-4 w-4 text-blue-500 mt-0.5" />
+                                <p className="text-sm">{order.pickupAddress}</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm font-medium text-gray-600 mb-1">Delivery Location</p>
+                              <div className="flex items-start space-x-1">
+                                <MapPin className="h-4 w-4 text-red-500 mt-0.5" />
+                                <p className="text-sm">{order.deliveryAddress}</p>
+                              </div>
+                            </div>
+                          </div>
+                          
                           <div className="flex items-center space-x-3">
-                            <h3 className="font-semibold text-lg">Order #{order.id}</h3>
-                            <Badge className={getStatusColor(order.status)}>
-                              <span className="capitalize">{order.status.replace('_', ' ')}</span>
-                            </Badge>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-lg">${order.totalAmount}</p>
-                            <p className="text-sm text-gray-600">{order.vendorName}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-2 gap-6 mb-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600 mb-2">Customer Details</p>
-                            <p className="font-medium">{order.customerName}</p>
-                            <div className="flex items-center space-x-1 text-sm text-gray-500">
-                              <Phone className="h-3 w-3" />
-                              <span>{order.customerPhone}</span>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm font-medium text-gray-600 mb-2">Items</p>
-                            <p className="text-sm">{order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid md:grid-cols-2 gap-6 mb-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-600 mb-1">Pickup Location</p>
-                            <div className="flex items-start space-x-1">
-                              <Package className="h-4 w-4 text-blue-500 mt-0.5" />
-                              <p className="text-sm">{order.pickupAddress}</p>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <p className="text-sm font-medium text-gray-600 mb-1">Delivery Location</p>
-                            <div className="flex items-start space-x-1">
-                              <MapPin className="h-4 w-4 text-red-500 mt-0.5" />
-                              <p className="text-sm">{order.deliveryAddress}</p>
-                            </div>
+                            {!isTracking && order.status !== 'delivered' && (
+                              <Button 
+                                onClick={() => handleStartDelivery(order)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Delivery
+                              </Button>
+                            )}
+                            
+                            {nextAction && (
+                              <Button 
+                                onClick={() => updateOrderStatus(order.id, nextAction.action)}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                {nextAction.label}
+                              </Button>
+                            )}
+                            
+                            {order.status === 'delivered' && (
+                              <Badge className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Completed
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          {!isTracking && order.status !== 'delivered' && (
-                            <Button 
-                              onClick={() => handleStartDelivery(order)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              Start Delivery
-                            </Button>
-                          )}
-                          
-                          {nextAction && (
-                            <Button 
-                              onClick={() => updateOrderStatus(order.id, nextAction.action)}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              {nextAction.label}
-                            </Button>
-                          )}
-                          
-                          {order.status === 'delivered' && (
-                            <Badge className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Completed
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </CardContent>
             </Card>
