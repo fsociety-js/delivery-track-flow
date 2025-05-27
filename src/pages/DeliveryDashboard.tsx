@@ -137,7 +137,8 @@ const DeliveryDashboard = () => {
       order.id === orderId ? { ...order, status: newStatus } : order
     ));
     
-    const statusMessages = {
+    const statusMessages: Record<Order['status'], string> = {
+      assigned: 'Order assigned to delivery partner',
       picked_up: 'Order picked up from vendor',
       in_transit: 'En route to customer',
       delivered: 'Order delivered successfully'
@@ -159,7 +160,7 @@ const DeliveryDashboard = () => {
     }
   };
 
-  const getNextAction = (status: Order['status']) => {
+  const getNextAction = (status: Order['status']): { action: Order['status']; label: string } | null => {
     switch (status) {
       case 'assigned': return { action: 'picked_up', label: 'Mark as Picked Up' };
       case 'picked_up': return { action: 'in_transit', label: 'Start Delivery' };
