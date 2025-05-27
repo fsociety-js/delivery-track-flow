@@ -1,4 +1,3 @@
-
 import { authService } from './authService';
 
 interface Order {
@@ -25,6 +24,10 @@ interface Order {
   updatedAt: string;
 }
 
+interface DeliveryPartnerOrder extends Order {
+  deliveryPartnerId: string;
+}
+
 interface AssignDeliveryPartnerData {
   orderId: string;
   deliveryPartnerId: string;
@@ -46,7 +49,7 @@ class OrderService {
     }
   }
 
-  async getDeliveryPartnerOrders(deliveryPartnerId: string): Promise<Order[]> {
+  async getDeliveryPartnerOrders(deliveryPartnerId: string): Promise<DeliveryPartnerOrder[]> {
     try {
       const response = await authService.authenticatedFetch(`/orders/delivery/${deliveryPartnerId}`);
       
@@ -129,4 +132,4 @@ class OrderService {
 }
 
 export const orderService = new OrderService();
-export type { Order, AssignDeliveryPartnerData };
+export type { Order, DeliveryPartnerOrder, AssignDeliveryPartnerData };

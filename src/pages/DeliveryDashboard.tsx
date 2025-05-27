@@ -7,34 +7,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { socketService } from '@/services/socketService';
 import { authService, User } from '@/services/authService';
-import { orderService, Order } from '@/services/orderService';
+import { orderService, DeliveryPartnerOrder } from '@/services/orderService';
 import DeliveryMap from '@/components/DeliveryMap';
 
-interface Order {
-  id: string;
-  vendorId: string;
-  customerId: string;
-  deliveryPartnerId: string;
-  customerName: string;
-  customerPhone: string;
-  items: { name: string; quantity: number; price: number }[];
-  totalAmount: number;
-  status: 'assigned' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
-  pickupAddress: string;
-  deliveryAddress: string;
-  pickupLocation: { lat: number; lng: number };
-  deliveryLocation: { lat: number; lng: number };
-  vendorName: string;
-  estimatedDeliveryTime: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 const DeliveryDashboard = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<DeliveryPartnerOrder[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<DeliveryPartnerOrder | null>(null);
   const { toast } = useToast();
   
   const { 
@@ -71,7 +51,7 @@ const DeliveryDashboard = () => {
     } catch (error) {
       console.error('Error loading orders:', error);
       // Fallback to sample data for demo
-      const sampleOrders: Order[] = [
+      const sampleOrders: DeliveryPartnerOrder[] = [
         {
           id: 'ORD002',
           vendorId: 'VEN001',
@@ -100,7 +80,7 @@ const DeliveryDashboard = () => {
     }
   };
 
-  const handleStartDelivery = (order: Order) => {
+  const handleStartDelivery = (order: DeliveryPartnerOrder) => {
     setActiveOrderId(order.id);
     setSelectedOrder(order);
     startTracking();
@@ -122,7 +102,7 @@ const DeliveryDashboard = () => {
     });
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, newStatus: DeliveryPartnerOrder['status']) => {
     try {
       await orderService.updateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(order => 
@@ -132,7 +112,7 @@ const DeliveryDashboard = () => {
       // Send status update via Socket.IO
       socketService.sendOrderStatusUpdate(orderId, newStatus);
       
-      const statusMessages: Record<Order['status'], string> = {
+      const statusMessages: Record<DeliveryPartnerOrder['status'], string> = {
         pending: 'Order is pending',
         assigned: 'Order assigned to delivery partner',
         picked_up: 'Order picked up from vendor',
@@ -157,6 +137,7 @@ const DeliveryDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending': return 'bg-gray-100 text-gray-800';
       case 'assigned': return 'bg-blue-100 text-blue-800';
       case 'picked_up': return 'bg-yellow-100 text-yellow-800';
       case 'in_transit': return 'bg-purple-100 text-purple-800';
@@ -166,7 +147,7 @@ const DeliveryDashboard = () => {
     }
   };
 
-  const getNextAction = (status: Order['status']): { action: Order['status']; label: string } | null => {
+  const getNextAction = (status: DeliveryPartnerOrder['status']): { action: DeliveryPartnerOrder['status']; label: string } | null => {
     switch (status) {
       case 'assigned': return { action: 'picked_up', label: 'Mark as Picked Up' };
       case 'picked_up': return { action: 'in_transit', label: 'Start Delivery' };
