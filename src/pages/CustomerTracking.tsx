@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Phone, Package, Search, Navigation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Map from '@/components/Map';
+import DeliveryMap from '@/components/DeliveryMap';
+import { socketService } from '@/services/socketService';
 
 interface Order {
   id: string;
@@ -16,7 +17,9 @@ interface Order {
   deliveryPartnerPhone: string;
   estimatedTime: string;
   currentLocation?: { lat: number; lng: number };
+  pickupLocation: { lat: number; lng: number; address: string };
   deliveryAddress: string;
+  deliveryLocation: { lat: number; lng: number };
   items: string[];
   totalAmount: number;
 }
@@ -26,6 +29,7 @@ const CustomerTracking = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -34,18 +38,47 @@ const CustomerTracking = () => {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+  }, []);
 
-    // Set up global callback for location updates
-    window.locationUpdateCallback = (location: { lat: number; lng: number }) => {
-      if (order) {
-        setOrder(prev => prev ? { ...prev, currentLocation: location } : null);
-      }
-    };
+  useEffect(() => {
+    if (order && user) {
+      // Connect to socket service for real-time updates
+      socketService.connect(user.id, 'customer');
+      
+      // Join tracking session for this order
+      socketService.joinTrackingSession(order.id);
+      
+      // Listen for location updates
+      socketService.onLocationUpdate((data) => {
+        if (data.orderId === order.id) {
+          setOrder(prev => prev ? { 
+            ...prev, 
+            currentLocation: data.location 
+          } : null);
+        }
+      });
 
-    return () => {
-      delete window.locationUpdateCallback;
-    };
-  }, [order]);
+      // Listen for order status updates
+      socketService.onOrderStatusUpdate((data) => {
+        if (data.orderId === order.id) {
+          setOrder(prev => prev ? { 
+            ...prev, 
+            status: data.status as Order['status']
+          } : null);
+          
+          toast({
+            title: 'Order Status Updated',
+            description: `Your order is now ${data.status.replace('_', ' ')}`
+          });
+        }
+      });
+
+      return () => {
+        socketService.leaveTrackingSession(order.id);
+        socketService.disconnect();
+      };
+    }
+  }, [order, user, toast]);
 
   const trackOrder = () => {
     if (!trackingId.trim()) {
@@ -61,7 +94,7 @@ const CustomerTracking = () => {
 
     // Simulate API call
     setTimeout(() => {
-      // Sample order data
+      // Sample order data with pickup and delivery locations
       const sampleOrder: Order = {
         id: trackingId,
         customerName: user?.name || 'John Doe',
@@ -70,8 +103,17 @@ const CustomerTracking = () => {
         deliveryPartnerPhone: '+1-555-1002',
         estimatedTime: '15-20 minutes',
         currentLocation: {
-          lat: 37.7849, // Slightly offset from default location
+          lat: 37.7849, // Current location of delivery partner
           lng: -122.4094
+        },
+        pickupLocation: {
+          lat: 37.7849,
+          lng: -122.4194,
+          address: 'Pizza Palace, 456 Restaurant Row'
+        },
+        deliveryLocation: {
+          lat: 37.7749, // Customer location
+          lng: -122.4194
         },
         deliveryAddress: '123 Main St, Downtown',
         items: ['Pizza Margherita', 'Garlic Bread', 'Coke'],
@@ -106,6 +148,14 @@ const CustomerTracking = () => {
       case 'delivered': return 'Order delivered';
       default: return 'Processing order';
     }
+  };
+
+  const handleRouteCalculated = (distance: number, duration: number) => {
+    setRouteInfo({ distance, duration });
+    setOrder(prev => prev ? {
+      ...prev,
+      estimatedTime: `${duration} minutes`
+    } : null);
   };
 
   return (
@@ -189,6 +239,11 @@ const CustomerTracking = () => {
                         <Clock className="h-4 w-4 text-orange-500" />
                         <p className="text-sm font-medium">{order.estimatedTime}</p>
                       </div>
+                      {routeInfo && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Distance: {routeInfo.distance} km
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -245,25 +300,29 @@ const CustomerTracking = () => {
               </Card>
             </div>
 
-            {/* Map */}
+            {/* Map with Live Tracking */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Navigation className="h-5 w-5" />
-                  <span>Live Tracking</span>
+                  <span>Live Delivery Tracking</span>
                 </CardTitle>
                 <CardDescription>
                   {order.currentLocation 
-                    ? 'Follow your delivery partner in real-time' 
+                    ? 'Follow your delivery partner in real-time with route' 
                     : 'Waiting for location updates...'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-96 relative">
                   {order.currentLocation ? (
-                    <Map 
-                      deliveryLocation={order.currentLocation}
+                    <DeliveryMap 
+                      pickupLocation={order.pickupLocation}
+                      dropoffLocation={order.deliveryLocation}
+                      currentLocation={order.currentLocation}
                       deliveryPartnerName={order.deliveryPartner}
+                      showDirections={true}
+                      onRouteCalculated={handleRouteCalculated}
                     />
                   ) : (
                     <div className="h-full flex items-center justify-center bg-gray-100">
@@ -287,7 +346,7 @@ const CustomerTracking = () => {
                 Start Tracking Your Order
               </h3>
               <p className="text-gray-600">
-                Enter your order ID above to see real-time delivery updates and track your delivery partner on the map.
+                Enter your order ID above to see real-time delivery updates, track your delivery partner on the map, and view the route they're taking to reach you.
               </p>
             </CardContent>
           </Card>
