@@ -3,9 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Package, Clock, CheckCircle, Truck, User, Phone } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MapPin, Package, Clock, CheckCircle, Truck, User, Phone, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import CreateOrderForm from '@/components/CreateOrderForm';
+import DeliveryAnalytics from '@/components/DeliveryAnalytics';
 
 interface Order {
   id: string;
@@ -199,147 +201,166 @@ const VendorDashboard = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                  <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
-                </div>
-                <Package className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{orders.filter(o => o.status === 'pending').length}</p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">In Transit</p>
-                  <p className="text-2xl font-bold text-purple-600">{orders.filter(o => o.status === 'in_transit').length}</p>
-                </div>
-                <Truck className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Available Drivers</p>
-                  <p className="text-2xl font-bold text-green-600">{deliveryPartners.filter(p => p.isAvailable).length}</p>
-                </div>
-                <User className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Tabs defaultValue="orders" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="orders" className="flex items-center space-x-2">
+              <Package className="h-4 w-4" />
+              <span>Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center space-x-2">
+              <BarChart3 className="h-4 w-4" />
+              <span>Analytics</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Orders List */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Manage and assign delivery partners to orders</CardDescription>
-              </div>
-              <CreateOrderForm onCreateOrder={createOrder} />
+          <TabsContent value="orders" className="space-y-8">
+            {/* Stats */}
+            <div className="grid md:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                      <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold text-yellow-600">{orders.filter(o => o.status === 'pending').length}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">In Transit</p>
+                      <p className="text-2xl font-bold text-purple-600">{orders.filter(o => o.status === 'in_transit').length}</p>
+                    </div>
+                    <Truck className="h-8 w-8 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Available Drivers</p>
+                      <p className="text-2xl font-bold text-green-600">{deliveryPartners.filter(p => p.isAvailable).length}</p>
+                    </div>
+                    <User className="h-8 w-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="font-semibold text-lg">Order #{order.id}</h3>
-                        <Badge className={getStatusColor(order.status)}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(order.status)}
-                            <span className="capitalize">{order.status.replace('_', ' ')}</span>
+
+            {/* Orders List */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Orders</CardTitle>
+                    <CardDescription>Manage and assign delivery partners to orders</CardDescription>
+                  </div>
+                  <CreateOrderForm onCreateOrder={createOrder} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="font-semibold text-lg">Order #{order.id}</h3>
+                            <Badge className={getStatusColor(order.status)}>
+                              <div className="flex items-center space-x-1">
+                                {getStatusIcon(order.status)}
+                                <span className="capitalize">{order.status.replace('_', ' ')}</span>
+                              </div>
+                            </Badge>
                           </div>
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                          <p className="text-sm text-gray-600">Customer</p>
-                          <p className="font-medium">{order.customerName}</p>
-                          <div className="flex items-center space-x-1 text-sm text-gray-500">
-                            <Phone className="h-3 w-3" />
-                            <span>{order.customerPhone}</span>
+                          
+                          <div className="grid md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                              <p className="text-sm text-gray-600">Customer</p>
+                              <p className="font-medium">{order.customerName}</p>
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                <Phone className="h-3 w-3" />
+                                <span>{order.customerPhone}</span>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm text-gray-600">Delivery Address</p>
+                              <div className="flex items-start space-x-1">
+                                <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                                <p className="text-sm">{order.address}</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-600 mb-1">Items</p>
+                            <p className="text-sm">{order.items.join(', ')}</p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-gray-600">Total Amount</p>
+                              <p className="font-bold text-lg">${order.totalAmount}</p>
+                            </div>
+                            
+                            {order.assignedDelivery && (
+                              <div>
+                                <p className="text-sm text-gray-600">Assigned to</p>
+                                <p className="font-medium">{order.assignedDelivery}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
-                        <div>
-                          <p className="text-sm text-gray-600">Delivery Address</p>
-                          <div className="flex items-start space-x-1">
-                            <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
-                            <p className="text-sm">{order.address}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-600 mb-1">Items</p>
-                        <p className="text-sm">{order.items.join(', ')}</p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Total Amount</p>
-                          <p className="font-bold text-lg">${order.totalAmount}</p>
-                        </div>
-                        
-                        {order.assignedDelivery && (
-                          <div>
-                            <p className="text-sm text-gray-600">Assigned to</p>
-                            <p className="font-medium">{order.assignedDelivery}</p>
+                        {order.status === 'pending' && (
+                          <div className="ml-4">
+                            <Select onValueChange={(value) => assignDeliveryPartner(order.id, value)}>
+                              <SelectTrigger className="w-48">
+                                <SelectValue placeholder="Assign delivery partner" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {deliveryPartners
+                                  .filter(partner => partner.isAvailable)
+                                  .map((partner) => (
+                                    <SelectItem key={partner.id} value={partner.name}>
+                                      {partner.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         )}
                       </div>
                     </div>
-                    
-                    {order.status === 'pending' && (
-                      <div className="ml-4">
-                        <Select onValueChange={(value) => assignDeliveryPartner(order.id, value)}>
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Assign delivery partner" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {deliveryPartners
-                              .filter(partner => partner.isAvailable)
-                              .map((partner) => (
-                                <SelectItem key={partner.id} value={partner.name}>
-                                  {partner.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <DeliveryAnalytics />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
