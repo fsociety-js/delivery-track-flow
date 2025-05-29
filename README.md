@@ -254,8 +254,7 @@ Ensure all environment variables are configured in your deployment platform:
 - **Vercel**: Optimized for React applications
 - **Netlify**: Static site hosting with form handling
 - **AWS S3 + CloudFront**: Scalable static hosting
-- **Lovable**: One-click deployment (recommended)
-
+  
 ## 🔧 Development Guidelines
 
 ### Code Style
