@@ -327,7 +327,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **shadcn/ui** for beautiful component library
 - **Socket.IO** for real-time communication
 - **Recharts** for data visualization
-- **Lovable** for the development platform
+
 
 ---
 
